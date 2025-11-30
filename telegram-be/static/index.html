@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Telegram Support Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <style>
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      .animate-slideIn {
+        animation: slideIn 0.3s ease-out forwards;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-100 h-screen flex flex-col font-sans text-gray-800 overflow-hidden"
+  >
+    <div
+      class="bg-blue-600 text-white px-6 py-3 shadow-md flex justify-between items-center z-10 shrink-0"
+    >
+      <h1 class="text-lg font-bold tracking-wide flex items-center gap-2">
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+          ></path>
+        </svg>
+        Telegram Support
+      </h1>
+      <div id="wsStatus" class="text-xs font-medium opacity-80">
+        Connecting...
+      </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+      <div
+        class="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 z-20"
+      >
+        <div class="p-4 border-b border-gray-200">
+          <button
+            onclick="showAddAccountModal()"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors shadow-sm flex justify-center items-center gap-2"
+          >
+            <span>+</span> Add Account
+          </button>
+        </div>
+
+        <div
+          class="flex text-sm font-medium text-center text-gray-500 border-b border-gray-200"
+        >
+          <button
+            onclick="switchTab('chats')"
+            class="sidebar-tab flex-1 p-3 hover:bg-gray-50 border-b-2 border-blue-600 text-blue-600 active"
+          >
+            Chats
+          </button>
+          <button
+            onclick="switchTab('tickets')"
+            class="sidebar-tab flex-1 p-3 hover:bg-gray-50 border-b-2 border-transparent"
+          >
+            Tickets
+          </button>
+          <button
+            onclick="switchTab('board')"
+            class="sidebar-tab flex-1 p-3 hover:bg-gray-50 border-b-2 border-transparent"
+          >
+            📋 Board
+          </button>
+          <button
+            onclick="switchTab('agents')"
+            class="sidebar-tab flex-1 p-3 hover:bg-gray-50 border-b-2 border-transparent"
+          >
+            Agents
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto bg-white">
+          <div id="chatsTab"></div>
+          <div id="ticketsTab" style="display: none"></div>
+          <div id="boardTab" style="display: none"></div>
+          <div
+            id="agentsTab"
+            style="display: none"
+            class="p-4 text-center text-gray-400"
+          >
+            Feature coming soon
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col min-w-0 bg-gray-50">
+        <!-- Board View -->
+        <div
+          id="boardView"
+          style="display: none"
+          class="flex-1 flex flex-col h-full overflow-hidden"
+        >
+          <div class="bg-white border-b border-gray-200 p-4">
+            <div class="grid grid-cols-5 gap-3">
+              <div class="bg-blue-50 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-blue-600" id="summaryTotal">
+                  0
+                </div>
+                <div class="text-xs text-gray-600">Total</div>
+              </div>
+              <div class="bg-yellow-50 rounded-lg p-3 text-center">
+                <div
+                  class="text-2xl font-bold text-yellow-600"
+                  id="summaryOpen"
+                >
+                  0
+                </div>
+                <div class="text-xs text-gray-600">Open</div>
+              </div>
+              <div class="bg-purple-50 rounded-lg p-3 text-center">
+                <div
+                  class="text-2xl font-bold text-purple-600"
+                  id="summaryInProgress"
+                >
+                  0
+                </div>
+                <div class="text-xs text-gray-600">In Progress</div>
+              </div>
+              <div class="bg-green-50 rounded-lg p-3 text-center">
+                <div
+                  class="text-2xl font-bold text-green-600"
+                  id="summaryResolved"
+                >
+                  0
+                </div>
+                <div class="text-xs text-gray-600">Resolved</div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-3 text-center">
+                <div
+                  class="text-2xl font-bold text-gray-600"
+                  id="summaryClosed"
+                >
+                  0
+                </div>
+                <div class="text-xs text-gray-600">Closed</div>
+              </div>
+            </div>
+            <!-- NEW: Filter Section -->
+            <div class="flex gap-3 mt-4">
+              <select
+                id="filterAgent"
+                onchange="kanban.applyFilters()"
+                class="border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="">All Agents</option>
+              </select>
+
+              <select
+                id="filterStatus"
+                onchange="kanban.applyFilters()"
+                class="border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+
+              <button
+                onclick="kanban.resetFilters()"
+                class="border border-gray-300 rounded px-4 py-2 text-sm hover:bg-gray-50"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 bg-gray-50">
+            <div class="flex gap-4 h-full min-w-max">
+              <div class="kanban-column flex-1 min-w-[280px]">
+                <div class="kanban-header bg-yellow-100 text-yellow-800">
+                  <span class="font-semibold">🟡 Open</span>
+                  <span class="kanban-count" id="countOpen">0</span>
+                </div>
+                <div
+                  class="kanban-cards"
+                  id="columnOpen"
+                  data-status="open"
+                ></div>
+              </div>
+
+              <div class="kanban-column flex-1 min-w-[280px]">
+                <div class="kanban-header bg-purple-100 text-purple-800">
+                  <span class="font-semibold">🟣 In Progress</span>
+                  <span class="kanban-count" id="countInProgress">0</span>
+                </div>
+                <div
+                  class="kanban-cards"
+                  id="columnInProgress"
+                  data-status="in_progress"
+                ></div>
+              </div>
+
+              <div class="kanban-column flex-1 min-w-[280px]">
+                <div class="kanban-header bg-green-100 text-green-800">
+                  <span class="font-semibold">🟢 Resolved</span>
+                  <span class="kanban-count" id="countResolved">0</span>
+                </div>
+                <div
+                  class="kanban-cards"
+                  id="columnResolved"
+                  data-status="resolved"
+                ></div>
+              </div>
+
+              <div class="kanban-column flex-1 min-w-[280px]">
+                <div class="kanban-header bg-gray-100 text-gray-800">
+                  <span class="font-semibold">⚫ Closed</span>
+                  <span class="kanban-count" id="countClosed">0</span>
+                </div>
+                <div
+                  class="kanban-cards"
+                  id="columnClosed"
+                  data-status="closed"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="chatView" class="flex-1 flex flex-col min-w-0">
+          <div
+            id="emptyChat"
+            class="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4"
+          >
+            <svg
+              class="w-16 h-16 opacity-20"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"
+              ></path>
+              <path
+                d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"
+              ></path>
+            </svg>
+            <p>Select a conversation to start</p>
+          </div>
+
+          <div id="activeChat" class="hidden flex-1 flex overflow-hidden">
+            <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+              <div
+                class="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center shadow-sm shrink-0"
+              >
+                <div>
+                  <h2 class="font-bold text-gray-800" id="chatTitle">
+                    Chat Name
+                  </h2>
+                  <p class="text-xs text-gray-500" id="chatSubtitle">
+                    via Account...
+                  </p>
+                </div>
+              </div>
+
+              <div
+                id="messagesContainer"
+                class="flex-1 overflow-y-auto p-6 space-y-4"
+              ></div>
+
+              <div class="bg-white border-t border-gray-200 p-4 shrink-0">
+                <form
+                  onsubmit="sendReply(event)"
+                  class="flex gap-2 max-w-4xl mx-auto"
+                >
+                  <input
+                    type="text"
+                    id="replyInput"
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Type a message..."
+                    autocomplete="off"
+                  />
+                  <button
+                    type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Send
+                  </button>
+                </form>
+              </div>
+            </div>
+            <!-- Ticket Sidebar (UNCHANGED) -->
+            <div
+              class="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 overflow-y-auto"
+            >
+              <div
+                class="p-4 border-b border-gray-200 font-bold text-gray-700 bg-gray-50"
+              >
+                Ticket Details
+              </div>
+
+              <div class="p-6">
+                <div id="noTicketState" class="text-center py-8">
+                  <div class="mb-4 text-gray-400 text-sm">No active ticket</div>
+                  <button
+                    onclick="showCreateTicketModal()"
+                    class="w-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-blue-500 hover:text-blue-600 font-medium py-3 rounded-lg transition-colors"
+                  >
+                    + Create Ticket
+                  </button>
+                </div>
+
+                <div id="activeTicketState" class="hidden">
+                  <div
+                    class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                  >
+                    <div
+                      class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center"
+                    >
+                      <span
+                        class="text-xs font-mono text-gray-500"
+                        id="ticketDisplayId"
+                        >#ID</span
+                      >
+                      <span
+                        id="ticketStatusBadge"
+                        class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-green-100 text-green-700"
+                        >OPEN</span
+                      >
+                    </div>
+
+                    <div class="p-4 space-y-4">
+                      <div>
+                        <label
+                          class="text-xs font-bold text-gray-400 uppercase tracking-wider"
+                          >Subject</label
+                        >
+                        <div
+                          id="ticketSubject"
+                          class="font-medium text-gray-800 mt-1"
+                        >
+                          Title
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          class="text-xs font-bold text-gray-400 uppercase tracking-wider"
+                          >Status</label
+                        >
+                        <select
+                          id="ticketStatusSelect"
+                          onchange="updateTicketStatus()"
+                          class="w-full border border-gray-300 rounded px-2 py-1 text-sm mt-1"
+                        >
+                          <option value="open">Open</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                          <option value="closed">Closed</option>
+                        </select>
+                      </div>
+
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
+                          <label
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            >Priority</label
+                          >
+                          <div
+                            id="ticketPriority"
+                            class="font-medium text-gray-800 mt-1 capitalize"
+                          >
+                            High
+                          </div>
+                        </div>
+                        <div>
+                          <label
+                            class="text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            >Source</label
+                          >
+                          <div
+                            id="ticketSource"
+                            class="font-medium text-gray-800 mt-1 capitalize"
+                          >
+                            Manual
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          class="text-xs font-bold text-gray-400 uppercase tracking-wider"
+                          >Note</label
+                        >
+                        <p
+                          id="ticketDescription"
+                          class="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded border border-gray-100"
+                        ></p>
+                      </div>
+                    </div>
+
+                    <div
+                      class="p-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-2"
+                    >
+                      <button
+                        onclick="deleteCurrentTicket()"
+                        class="w-full bg-white border border-red-200 text-red-500 hover:bg-red-50 py-2 rounded text-sm font-medium transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket Detail Modal -->
+    <div id="ticketDetailModal" class="modal hidden">
+      <div class="modal-overlay" onclick="kanban.closeDetail()"></div>
+      <div class="modal-content max-w-2xl">
+        <div class="modal-header">
+          <h3 class="text-lg font-bold">Ticket Details</h3>
+          <button
+            onclick="kanban.closeDetail()"
+            class="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Ticket #</label
+              >
+              <div class="text-lg font-mono text-gray-900" id="detailTicketId">
+                -
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Status</label
+                >
+                <select
+                  id="detailStatus"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >Priority</label
+                >
+                <select
+                  id="detailPriority"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Subject</label
+              >
+              <div class="text-gray-900" id="detailSubject">-</div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Description</label
+              >
+              <div class="text-gray-700 text-sm" id="detailDescription">-</div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Customer</label
+              >
+              <div class="text-gray-700" id="detailCustomer">-</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <label class="block text-xs text-gray-500">Created</label>
+                <div class="text-gray-700" id="detailCreated">-</div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500">Last Updated</label>
+                <div class="text-gray-700" id="detailUpdated">-</div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                📜 Change History
+              </label>
+              <div
+                id="detailHistory"
+                class="max-h-48 overflow-y-auto bg-gray-50 rounded-lg p-3 border border-gray-200"
+              >
+                <div class="text-gray-400 text-sm text-center py-4">
+                  Loading history...
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-3 pt-4">
+              <button onclick="kanban.saveDetail()" class="btn-primary flex-1">
+                Save Changes
+              </button>
+              <button onclick="kanban.jumpToChat()" class="btn-secondary">
+                Open Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Other modals (existing) -->
+    <div
+      id="createTicketModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 backdrop-blur-sm"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100"
+      >
+        <h3 class="text-xl font-bold text-gray-800 mb-4">New Ticket</h3>
+        <form onsubmit="submitCreateTicket(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Subject</label
+            >
+            <input
+              type="text"
+              id="newTicketSubject"
+              required
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Issue summary"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Priority</label
+            >
+            <select
+              id="newTicketPriority"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Internal Note</label
+            >
+            <textarea
+              id="newTicketDescription"
+              rows="3"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="Details..."
+            ></textarea>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onclick="document.getElementById('createTicketModal').classList.add('hidden'); document.getElementById('createTicketModal').classList.remove('flex')"
+              class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Create Ticket
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      id="addAccountModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50 backdrop-blur-sm"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100"
+      >
+        <h3 class="text-xl font-bold text-gray-800 mb-4">
+          Connect Telegram Account
+        </h3>
+        <div
+          id="addAccountError"
+          class="hidden mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200"
+        ></div>
+        <form onsubmit="addAccount(event)" class="space-y-4">
+          <div id="initialFields">
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Account Label</label
+              >
+              <input
+                type="text"
+                id="accountLabel"
+                required
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="e.g. Support Agent 1"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >API ID</label
+                >
+                <input
+                  type="number"
+                  id="apiId"
+                  required
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="12345"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1"
+                  >API Hash</label
+                >
+                <input
+                  type="text"
+                  id="apiHash"
+                  required
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="abcdef..."
+                />
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1"
+                >Phone Number</label
+              >
+              <input
+                type="tel"
+                id="phone"
+                required
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="+1234567890"
+              />
+              <p class="text-xs text-gray-500 mt-1">
+                Must include country code (e.g. +62)
+              </p>
+            </div>
+          </div>
+          <div id="verificationField" class="hidden">
+            <div class="p-3 bg-blue-50 text-blue-700 text-sm rounded-lg mb-3">
+              Code sent! Check your Telegram app.
+            </div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Verification Code</label
+            >
+            <input
+              type="text"
+              id="verificationCode"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none tracking-widest font-mono"
+              placeholder="12345"
+            />
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onclick="hideAddAccountModal()"
+              class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              id="addAccountSubmitBtn"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center gap-2"
+            >
+              <span>Request Code</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      id="agentAttributesModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+      >
+        <div
+          class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center"
+        >
+          <h2 class="text-xl font-bold text-gray-800">Agent Attributes</h2>
+          <button
+            onclick="window.app.closeAgentAttributesModal()"
+            class="text-gray-500 hover:text-gray-700"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <form id="agentAttributesForm" class="p-6 space-y-6">
+          <input type="hidden" id="attrAccountId" />
+
+          <!-- Persona -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Persona
+              <span class="text-gray-400 text-xs"
+                >(How the agent should behave)</span
+              >
+            </label>
+            <textarea
+              id="attrPersona"
+              rows="3"
+              maxlength="500"
+              placeholder="e.g., Friendly customer support agent who is patient and helpful"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1">Max 500 characters</p>
+          </div>
+
+          <!-- Knowledge -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Knowledge Base
+              <span class="text-gray-400 text-xs"
+                >(What the agent knows about)</span
+              >
+            </label>
+            <textarea
+              id="attrKnowledge"
+              rows="5"
+              maxlength="2000"
+              placeholder="e.g., Product catalog, pricing, shipping policies, return process..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1">Max 2000 characters</p>
+          </div>
+
+          <!-- Schedule -->
+          <div class="border border-gray-200 rounded-lg p-4">
+            <h3 class="font-medium text-gray-800 mb-3">Schedule</h3>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">Timezone</label>
+                <select
+                  id="attrTimezone"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                  <option value="Asia/Makassar">Asia/Makassar (WITA)</option>
+                  <option value="Asia/Jayapura">Asia/Jayapura (WIT)</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm text-gray-700 mb-1"
+                  >Work Hours</label
+                >
+                <input
+                  type="text"
+                  id="attrWorkHours"
+                  placeholder="09:00-17:00"
+                  pattern="[0-9]{2}:[0-9]{2}-[0-9]{2}:[0-9]{2}"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="block text-sm text-gray-700 mb-2">Work Days</label>
+              <div class="flex flex-wrap gap-2">
+                <label class="flex items-center">
+                  <input type="checkbox" value="Mon" class="attr-day mr-1" />
+                  Mon
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" value="Tue" class="attr-day mr-1" />
+                  Tue
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" value="Wed" class="attr-day mr-1" />
+                  Wed
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" value="Thu" class="attr-day mr-1" />
+                  Thu
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" value="Fri" class="attr-day mr-1" />
+                  Fri
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" value="Sat" class="attr-day mr-1" />
+                  Sat
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" value="Sun" class="attr-day mr-1" />
+                  Sun
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Integration -->
+          <div class="border border-gray-200 rounded-lg p-4">
+            <h3 class="font-medium text-gray-800 mb-3">Channel Integration</h3>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" id="attrTelegram" class="mr-2" />
+                <span class="text-sm">Telegram</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" id="attrWhatsapp" class="mr-2" />
+                <span class="text-sm">WhatsApp</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" id="attrEmail" class="mr-2" />
+                <span class="text-sm">Email</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Ticketing Settings -->
+          <div class="border border-gray-200 rounded-lg p-4">
+            <h3 class="font-medium text-gray-800 mb-3">Ticketing Settings</h3>
+
+            <div class="space-y-3">
+              <label class="flex items-center">
+                <input type="checkbox" id="attrAutoAssign" class="mr-2" />
+                <span class="text-sm">Auto-assign tickets</span>
+              </label>
+
+              <div>
+                <label class="block text-sm text-gray-700 mb-1"
+                  >Max Tickets</label
+                >
+                <input
+                  type="number"
+                  id="attrMaxTickets"
+                  min="1"
+                  max="100"
+                  placeholder="10"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm text-gray-700 mb-1"
+                  >Priority Rules</label
+                >
+                <select
+                  id="attrPriorityRules"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="auto">Auto-detect from message</option>
+                  <option value="manual">Manual assignment only</option>
+                  <option value="ai">AI-powered detection</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="flex justify-end gap-3 pt-4 border-t">
+            <button
+              type="button"
+              onclick="window.app.closeAgentAttributesModal()"
+              class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Save Attributes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/static/js/main.js"></script>
+    <script src="/static/js/kanban.js"></script>
+  </body>
+</html>
